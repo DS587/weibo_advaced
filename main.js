@@ -14,7 +14,7 @@
     'use strict';
 
     var theme_color = '#c74ab7';
-    var head_font = '微软雅黑';
+    
     /*
         布局
     */
@@ -226,7 +226,6 @@
     */
     GM_addStyle (`
         .head_cut_2Zcft{
-            font-family:fantasy,${head_font}!important;
             font-size:1.2rem!important;
             line-height:1.3rem!important;
         }

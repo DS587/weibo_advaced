@@ -14,6 +14,7 @@
     'use strict';
 
     var theme_color = '#c74ab7';
+    var head_font = '微软雅黑';
     /*
         布局
     */
@@ -225,7 +226,7 @@
     */
     GM_addStyle (`
         .head_cut_2Zcft{
-            font-family:fantasy,"微软雅黑"!important;
+            font-family:fantasy,${head_font}!important;
             font-size:1.2rem!important;
             line-height:1.3rem!important;
         }
@@ -244,24 +245,6 @@
         }
         .UG_left_nav .nav_item{
             font-size:16px!important;
-        }
-    `);
-
-    /*
-        背景
-    */
-    var imgDefault= "https://img.t.sinajs.cn/t6/skin/skin039/images/body_bg.jpg";
-    var img1= "https://wx1.sinaimg.cn/large/006XFhs4ly1h7su57g8j3j30xc0xck32.jpg";
-    var img2= "https://images.rawpixel.com/image_800/czNmcy1wcml2YXRlL3Jhd3BpeGVsX2ltYWdlcy93ZWJzaXRlX2NvbnRlbnQvbHIvcGYtczY1LXBvbS0wNzk5LXRlZGR5LTAxLmpwZw.jpg";
-    var img3= "https://riddickart.com/wp-content/uploads/2011/02/Beheaded.jpg";
-
-    //background-attachment:fixed!important; background-image:url(` + img2 + `)!important; background-size:contain!important; background-repeat:repeat!important;
-    GM_addStyle (`
-        body, .Frame_wrap_3g67Q, .wbs-feed{
-            background:url(` + img2 + `) 0 0/contain repeat fixed!important;
-        }
-        .WB_frame{
-            background-color:rgba(250,250,250,0.92)!important;
         }
     `);
 })();

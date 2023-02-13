@@ -14,7 +14,7 @@
     'use strict';
 
     var theme_color = '#c74ab7';
-    
+
     /*
         布局
     */
@@ -231,10 +231,6 @@
         }
         .head-info_info_2AspQ{
             line-height:1rem!important;
-        }
-        .wbpro-feed-ogText{
-            font-weight:bold!important;
-            padding-top:8px!important;
         }
         .wbpro-feed-ogText .detail_wbtext_4CRf9 img{
             width:25px!important;

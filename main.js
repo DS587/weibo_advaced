@@ -4,7 +4,7 @@
 // @author       WencyDeng
 // @license MIT
 // @namespace    http://tampermonkey.net/
-// @version      1.6
+// @version      2.0
 // @match        *://weibo.com/*
 // @match        *://s.weibo.com/*
 // @grant        GM_addStyle
@@ -12,7 +12,6 @@
 
 (function() {
     'use strict';
-
     var theme_color = '#c74ab7';
 
     /*
@@ -43,8 +42,14 @@
     //右侧侧边栏、广告条、个人资料顶部返回条、微博内容类型
     //.Main_side_i7Vti .wbpro-side-main>div:last-child:not(.wbpro-side-main){ display:none!important; }
     GM_addStyle(`
-        .Main_side_i7Vti{
+        .Main_side_i7Vti, .Main_sideMain_263ZF, .Side_sideBox_2G3FX{
             width:auto!important;
+        }
+        .Side_sideBox_2G3FX.Side_posFixed_1yjgv{
+            position: relative!important;
+        }
+        .wbpro-side-main{
+            width: 285px!important;
         }
         .Main_side_i7Vti .wbpro-side-main.SideIndex_sideMain_3jrwf{
             display:none!important;
@@ -129,6 +134,9 @@
             width:8vw!important;
             margin-right:5px!important;
             margin-bottom:5px!important;
+        }
+        .Viewer_content_3TYae{
+            z-index:1!important;
         }
     `);
     //视频
@@ -217,14 +225,14 @@
             color:#fff!important;
         }
         .Nav_panel_YI3-j{
-            background-color:#222!important;
+            background-color:#141414!important;
         }
     `);
 
     /*
         字体
     */
-    GM_addStyle (`
+        GM_addStyle (`
         .head_cut_2Zcft{
             font-size:1.2rem!important;
             line-height:1.3rem!important;

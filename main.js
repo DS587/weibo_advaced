@@ -1,237 +1,235 @@
 // ==UserScript==
-// @name         微博 Weibo_Wency
-// @description  通过更改垃圾内容的呈现形式戒断垃圾内容载体
-// @author       WencyDeng
-// @license MIT
+// @name         Weibo Space
 // @namespace    http://tampermonkey.net/
-// @version      2.0
+// @version      2026-03-28
+// @description  重整微博版面 & 自动翻页
+// @author       You
 // @match        *://weibo.com/*
 // @match        *://s.weibo.com/*
+// @icon         https://www.google.com/s2/favicons?sz=64&domain=weibo.com
 // @grant        GM_addStyle
 // ==/UserScript==
 
-(function() {
+(function () {
     'use strict';
-    var theme_color = '#c74ab7';
 
-    /*
-        布局
-    */
-    //主框架、左侧侧边栏、主内容、个人资料banner
+    var theme_color = '#187298';
+    var text_font_size = '13px';  // 正文字体大小
+
+    // 从 localStorage 读取保存的设置
+    const savedTheme = localStorage.getItem('weibo_theme_color');
+    const savedFontSize = localStorage.getItem('weibo_text_font_size');
+
+    if (savedTheme) theme_color = savedTheme;
+    if (savedFontSize) text_font_size = savedFontSize;
+
+    // 移除右侧栏
     GM_addStyle(`
-        .Frame_content_3XrxZ{
-            max-width:100vw!important;
-        }
-        .Frame_side_3G0Bf{
-            width:220px!important;
-        }
-        .Frame_side_3G0Bf .Nav_inner_1QCVO{
-            padding:10px 4px 40px!important;
-        }
-        .Main_full_1dfQX{
-            width:47vw!important;
-        }
-        article footer{
-            position:relative!important;
-        }
-        .ProfileHeader_pic_2Coeq{
-            height:230px!important;
-            overflow:hidden!important;
-        }
+    ._side_1l406_17 {
+        display: none !important;
+    }
     `);
-    //右侧侧边栏、广告条、个人资料顶部返回条、微博内容类型
-    //.Main_side_i7Vti .wbpro-side-main>div:last-child:not(.wbpro-side-main){ display:none!important; }
-    GM_addStyle(`
-        .Main_side_i7Vti, .Main_sideMain_263ZF, .Side_sideBox_2G3FX{
-            width:auto!important;
+    function createSettingsPanel() {
+        // 创建设置按钮
+        const settingsBtn = document.createElement('button');
+        settingsBtn.innerHTML = '⚙️';
+        settingsBtn.style.cssText = `
+            position: fixed;
+            right: 20px;
+            bottom: 20px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: none;
+            background: var(--w-brand, #187298);
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        `;
+
+        // 创建设置面板
+        const panel = document.createElement('div');
+        panel.id = 'weibo-settings-panel';
+        panel.style.cssText = `
+            position: fixed;
+            right: 20px;
+            bottom: 80px;
+            width: 300px;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            z-index: 10000;
+            display: none;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto;
+        `;
+
+        panel.innerHTML = `
+            <div style="margin-bottom: 16px;">
+                <label style="display: block; margin-bottom: 8px; font-weight: bold; font-size: 14px;">主题颜色</label>
+                <input type="color" id="theme-color-picker" value="${theme_color}" style="width: 100%; height: 40px; border: none; cursor: pointer; border-radius: 4px;">
+            </div>
+            <div style="margin-bottom: 16px;">
+                <label style="display: block; margin-bottom: 8px; font-weight: bold; font-size: 14px;">正文字体大小</label>
+                <div style="display: flex; gap: 8px;">
+                    <input type="range" id="font-size-slider" min="11" max="16" value="${parseInt(text_font_size)}" style="flex: 1; cursor: pointer;">
+                    <input type="number" id="font-size-input" min="11" max="16" value="${parseInt(text_font_size)}" style="width: 50px; padding: 4px; border: 1px solid #ddd; border-radius: 4px;">
+                    <span style="padding: 4px; width: 20px;">px</span>
+                </div>
+            </div>
+            <button id="settings-close" style="width: 100%; padding: 8px; background: #f0f0f0; border: 1px solid #ddd; border-radius: 4px; cursor: pointer;">关闭</button>
+        `;
+
+        document.body.appendChild(panel);
+        document.body.appendChild(settingsBtn);
+
+        // 按钮点击切换面板
+        settingsBtn.addEventListener('click', () => {
+            const isVisible = panel.style.display !== 'none';
+            panel.style.display = isVisible ? 'none' : 'block';
+        });
+
+        // 关闭按钮
+        document.getElementById('settings-close').addEventListener('click', () => {
+            panel.style.display = 'none';
+        });
+
+        // 主题颜色选择器
+        const colorPicker = document.getElementById('theme-color-picker');
+        colorPicker.addEventListener('change', (e) => {
+            theme_color = e.target.value;
+            localStorage.setItem('weibo_theme_color', theme_color);
+            applyThemeColor(theme_color);
+        });
+        colorPicker.addEventListener('input', (e) => {
+            theme_color = e.target.value;
+            applyThemeColor(theme_color);
+        });
+
+        // 字体大小滑块和输入框
+        const fontSizeSlider = document.getElementById('font-size-slider');
+        const fontSizeInput = document.getElementById('font-size-input');
+
+        const updateFontSize = (value) => {
+            text_font_size = value + 'px';
+            fontSizeSlider.value = value;
+            fontSizeInput.value = value;
+            localStorage.setItem('weibo_text_font_size', text_font_size);
+            applyFontSize(text_font_size);
+        };
+
+        fontSizeSlider.addEventListener('input', (e) => updateFontSize(e.target.value));
+        fontSizeInput.addEventListener('change', (e) => updateFontSize(e.target.value));
+    }
+
+    // 实时应用主题颜色
+    function applyThemeColor(color) {
+        let styleEl = document.getElementById('weibo-theme-dynamic');
+        if (!styleEl) {
+            styleEl = document.createElement('style');
+            styleEl.id = 'weibo-theme-dynamic';
+            document.head.appendChild(styleEl);
         }
-        .Side_sideBox_2G3FX.Side_posFixed_1yjgv{
-            position: relative!important;
+        styleEl.textContent = `
+            :root {
+                --w-brand: ${color} !important;
+                --weibo-top-nav-icon-badge-color: ${color} !important;
+                --w-badge-background: ${color} !important;
+            }
+        `;
+    }
+
+    // 实时应用字体大小
+    function applyFontSize(size) {
+        let styleEl = document.getElementById('weibo-font-dynamic');
+        if (!styleEl) {
+            styleEl = document.createElement('style');
+            styleEl.id = 'weibo-font-dynamic';
+            document.head.appendChild(styleEl);
         }
-        .wbpro-side-main{
-            width: 285px!important;
+        styleEl.textContent = `
+            :root {
+                --feed-text-font-size: ${size} !important;
+            }
+            ._wbtext_q1l14_14 {
+                font-size: ${size} !important;
+            }
+        `;
+    }
+
+    // 初始化设置面板 - 确保 DOM 已准备好
+    function initSettingsPanel() {
+        try {
+            createSettingsPanel();
+        } catch (e) {
+            console.log('等待 DOM 加载...', e);
+            setTimeout(initSettingsPanel, 500);
         }
-        .Main_side_i7Vti .wbpro-side-main.SideIndex_sideMain_3jrwf{
-            display:none!important;
-        }
-        .wbpro-side-copy{
-            display:none!important;
-        }
-        .TipsAd_wrap_3QB_0{
-            display:none!important;
-        }
-        .Bar_main_R1N5v{
-            display:none!important;
-        }
-        .Home_wrap_XXu6Z .SecBar_visable_16JHY>div{
-            display:none!important;
-        }
-    `);
-    //筛选微博
-    GM_addStyle(`
-        div[title="显示/隐藏筛选微博"]{
-            display:none!important;
-        }
-        .Selector_c1con_2IUxp div{
-            display:-webkit-box!important;
-        }
-        .wbpro-side-tit .wbpro-iconbed .woo-font{
-            color:${theme_color}!important;
-        }
-    `);
-    //返回顶部button
-    GM_addStyle(`
-        .BackTop_main_3m3aB, .m-gotop{
-            margin-left:0!important;
-            left:auto!important;
-            right:10vw!important;
-            bottom:10vh!important;
-            width:60px!important;
-            height:60px!important;
-            background-color:#a472cb!important;
-            border:none!important;
-        }
-        .woo-font--backTop{
-            font-size:1.5rem!important;
-            color:#fff!important;
-        }
-        .m-gotop a{
-            height:100%!important;
-            width:100%!important;
-        }
-    `);
-    //微博logo
-    GM_addStyle(`
-        .Nav_logo_1BwBq{
-            width:110px!important;
-        }
-        .Nav_logo_1BwBq img{
-            display:none!important;
-        }
-        @media (min-width:1320px){
-            .Nav_logoWrap_2fPbO{
-                margin-left:-123px!important;
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initSettingsPanel);
+    } else {
+        setTimeout(initSettingsPanel, 100);
+    }
+
+    // 自动跳转到"最新微博"页面（无感跳转，避免首页渲染）
+    if (location.pathname === '/' && !location.search.includes('mygroups')) {
+        // 尝试从 localStorage 缓存读取，或等待 DOM 中的链接出现
+        let targetUrl = sessionStorage.getItem('weibo_latest_url');
+
+        if (targetUrl) {
+            location.replace(targetUrl);
+        } else {
+            // 快速检查是否已经有链接可用
+            const link = document.querySelector('a:has(div[title="最新微博"])');
+            if (link && link.href) {
+                sessionStorage.setItem('weibo_latest_url', link.href);
+                location.replace(link.href);
+            } else {
+                // 降级方案：等待导航栏加载
+                const observer = new MutationObserver(() => {
+                    const navLink = document.querySelector('a:has(div[title="最新微博"])');
+                    if (navLink && navLink.href) {
+                        sessionStorage.setItem('weibo_latest_url', navLink.href);
+                        location.replace(navLink.href);
+                        observer.disconnect();
+                    }
+                });
+                observer.observe(document.body, { childList: true, subtree: true });
+                // 超时保护：5秒后停止观察
+                setTimeout(() => observer.disconnect(), 5000);
             }
         }
-        @media (max-width:789px){
-            .Nav_logoWrap_2fPbO {
-                width:46px!important;
-            }
-        }
-    `);
-    //导航
-    GM_addStyle(`
-        .woo-tab-item-border{
-            height:0.2rem!important;
-        }
-    `);
-    //图片
-    GM_addStyle(`
-        .picture_inlineNum3_3P7k1{
-            width:100%!important;
-        }
-        .picture_item_3zpCn{
-            width:8vw!important;
-            margin-right:5px!important;
-            margin-bottom:5px!important;
-        }
-        .Viewer_content_3TYae{
-            z-index:1!important;
-        }
-    `);
-    //视频
-    //.FeedPlayer_feedVideo_39PLs .wbpv-poster:before{ height:50px!important; }
-    //.card-video_placeholder_3_xUz:before{ padding-bottom:40vh!important; }
-    GM_addStyle(`
-        .card-video_placeholder_3_xUz{
-            max-height:35vh!important;
-        }
-        .card-video_plusInfo_IqCJC, .card-video_dur_9_eh0{
-            bottom:15px!important;
-        }
-        .Index_backButton_3Yh5-[title="关闭弹层"] i{
-            display:none!important;
-        }
-        .Index_backButton_3Yh5-[title="关闭弹层"]{
-            z-index:1!important;
-            top:0!important;
-            left:0!important;
-            height:100%!important;
-            width:100%!important;
-            background:none!important;
-            border:none!important;
-            cursor:default!important;
-        }
-        .Viewer_container_EZ7Dt{
-            height:80%!important;
-            width:80%!important;
-            margin:5% auto 0!important;
-        }
-        .Frame_right_2tQRB{
-            z-index:2!important;
-        }
-    `);
+    }
 
-    /*
-        配色（超链接-c076df，背景-a472cb、rgba(200,200,200,0.23)，标识/悬停-c74ab7）
-    */
-    GM_addStyle (`
-        :root{
-            --w-color-orange-3:#aaa!important;
-            --weibo-top-nav-logo-color:#fff!important;
-            --w-hover:rgba(200,200,200,0.23)!important;
+    // 初始配色（主题颜色将由设置面板动态控制）
+    applyThemeColor(theme_color);
+    applyFontSize(text_font_size);
 
-            --w-color-orange-1:#a472cb!important;
-            --weibo-top-nav-pub-icon-bg:#a472cb!important;
-            --weibo-top-nav-icon-bg-hover:#a472cb!important;
-
-            --w-brand:${theme_color}!important;
-            --weibo-top-nav-icon-badge-color:${theme_color}!important;
-            --w-badge-background:${theme_color}!important;
-        }
+    // 其他配色规则
+    GM_addStyle(`
         .NavItem_main_2hs9r .woo-badge-outlying{
-            color:${theme_color}!important;
-            background:rgba(200,200,200,0.23)!important;
-        }
-        .detail_text_1U10O a, .head_cut_2Zcft:hover, .WB_frame_c a{
-            color:#c076df!important;
-        }
-        .woo-button-flat.woo-button-primary{
-            background-color:#a472cb!important;
-        }
-        .W_btn_a{
-            background-color:#a472cb!important;
-            border:none!important;
+            color: var(--w-brand) !important;
         }
         .UG_tips, .ProfileHeader_tag_2Ku6K{
-            color:${theme_color}!important;
+            color: var(--w-brand) !important;
         }
         .LoginTopNav_logoS_wOXns path{
-            fill:${theme_color}!important;
+            fill: var(--w-brand) !important;
         }
         .W_btn_a:hover, .Nav_pub_QrDht:hover, .BackTop_main_3m3aB:hover, .woo-button-flat.woo-button-primary:hover{
-            background:${theme_color}!important;
-        }
-        .Edit_lsort2_2EtTh{
-            border-color:rgba(164,114,203,.6)!important;
-        }
-        .Edit_lsort2in_2krtb:hover, .woo-button-line:hover, .ProfileHeader_tag_2Ku6K{
-            background:rgba(200,200,200,0.23)!important;
-        }
-        .Edit_lsort2in_2krtb i:hover{
-            background-color:#fff!important;
-        }
-        .Nav_wrap_gHB1a .woo-tab-item-main.woo-tab-active, .Nav_wrap_gHB1a .woo-tab-item-main{
-            color:#fff!important;
-        }
-        .Nav_panel_YI3-j{
-            background-color:#141414!important;
+            background: var(--w-brand) !important;
         }
     `);
 
-    /*
-        字体
-    */
+        // 字体
         GM_addStyle (`
         .head_cut_2Zcft{
             font-size:1.2rem!important;
